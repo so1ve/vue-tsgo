@@ -1,4 +1,4 @@
-import { type OxcError, parseSync, type Program } from "oxc-parser";
+import { type Comment, type OxcError, parseSync, type Program } from "oxc-parser";
 import type CompilerDOM from "@vue/compiler-dom";
 import type { SFCBlock, SFCDescriptor } from "@vue/compiler-sfc";
 import { parseStyleBindings, parseStyleClassNames } from "./style/parse";
@@ -37,12 +37,14 @@ export interface IRTemplate extends IRBlock {
 
 export interface IRScript extends IRBlock {
     ast: Program;
+    comments: Comment[];
     errors: OxcError[];
     src?: IRBlockAttr;
 }
 
 export interface IRScriptSetup extends IRBlock {
     ast: Program;
+    comments: Comment[];
     errors: OxcError[];
     generic?: IRBlockAttr;
 }
@@ -100,6 +102,7 @@ export function createIR(sfc: SFCDescriptor) {
             return {
                 ...block,
                 ast: result.program,
+                comments: result.comments,
                 errors: result.errors,
                 src,
             };
@@ -117,6 +120,7 @@ export function createIR(sfc: SFCDescriptor) {
             return {
                 ...block,
                 ast: result.program,
+                comments: result.comments,
                 errors: result.errors,
                 generic,
             };
