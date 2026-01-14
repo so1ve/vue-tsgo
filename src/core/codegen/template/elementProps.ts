@@ -273,7 +273,7 @@ function* generateAttrValue(node: CompilerDOM.TextNode, features: CodeInformatio
     const quote = node.loc.source.startsWith("'") ? "'" : "\"";
     const offset = getAttributeValueOffset(node);
     yield quote;
-    yield* generateUnicode(node.loc.source, offset, features);
+    yield* generateUnicode(node.content, offset, features);
     yield quote;
 }
 

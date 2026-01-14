@@ -4,6 +4,7 @@ import { stripVTControlCharacters, styleText } from "node:util";
 import * as pkg from "empathic/package";
 import { detectPackageManager } from "nypm";
 import { dirname, join, relative, resolve } from "pathe";
+import picomatch from "picomatch";
 import { glob } from "tinyglobby";
 import { parse } from "tsconfck";
 import { $ } from "zx";
@@ -36,48 +37,46 @@ export async function createProject(configPath: string): Promise<Project> {
         }
     }
     const vueCompilerOptions = resolver.resolve();
-    const sourceToTarget = new Map<string, SourceFile>();
-    const targetToSource = new Map<string, SourceFile>();
+    const sourceToFileMap = new Map<string, SourceFile>();
+    const targetToFileMap = new Map<string, SourceFile>();
 
-    const { includes, excludes } = await resolveFiles(parsed.tsconfig, configRoot);
-    const includeSet = new Set(Object.values(includes).flat());
-    const excludeSet = new Set(Object.values(excludes).flat());
+    const { includes, isExcluded } = await resolveFiles(parsed.tsconfig, configRoot);
     const mutualRoot = getMutualRoot(Object.keys(includes), configRoot);
 
-    for (const path of includeSet) {
+    for (const path of includes) {
         await processFile(path);
     }
 
     async function processFile(path: string) {
-        if (excludeSet.has(path)) {
-            includeSet.delete(path);
+        if (isExcluded(path)) {
+            includes.delete(path);
             return;
         }
 
-        if (sourceToTarget.has(path)) {
+        if (sourceToFileMap.has(path)) {
             return;
         }
 
         const sourceText = await readFile(path, "utf-8");
         const targetPath = join(cacheRoot, relative(mutualRoot, path));
         const sourceFile = createSourceFile(path, targetPath, sourceText, vueCompilerOptions);
-        sourceToTarget.set(path, sourceFile);
-        targetToSource.set(targetPath, sourceFile);
+        sourceToFileMap.set(path, sourceFile);
+        targetToFileMap.set(targetPath, sourceFile);
 
         for (const path of sourceFile.references) {
-            includeSet.add(path);
+            includes.add(path);
         }
     }
 
     function getSourceFile(fileName: string) {
-        return sourceToTarget.get(fileName);
+        return sourceToFileMap.get(fileName);
     }
 
     async function generate() {
         await rm(cacheRoot, { recursive: true, force: true });
         await mkdir(cacheRoot, { recursive: true });
 
-        for (const path of includeSet) {
+        for (const path of includes) {
             const sourceFile = getSourceFile(path)!;
 
             await mkdir(dirname(sourceFile.targetPath), { recursive: true });
@@ -86,7 +85,7 @@ export async function createProject(configPath: string): Promise<Project> {
                 for (const range of sourceFile.imports) {
                     const imported = join(dirname(path), sourceFile.sourceText.slice(range.start + 1, range.end - 1));
                     if (imported !== void 0) {
-                        const importedFile = sourceToTarget.get(imported);
+                        const importedFile = sourceToFileMap.get(imported);
                         if (importedFile?.type === "virtual") {
                             // eslint-disable-next-line no-unreachable-loop
                             for (const [offset] of sourceFile.mapper.toGeneratedLocation(range.end - 1)) {
@@ -136,12 +135,12 @@ export async function createProject(configPath: string): Promise<Project> {
         let withoutError = true;
 
         for (let [path, diagnostics] of Object.entries(groups)) {
-            const sourceFile = targetToSource.get(path);
+            const sourceFile = targetToFileMap.get(path);
 
             for (let i = 0; i < diagnostics.length; i++) {
                 const diagnostic = diagnostics[i];
 
-                if (!sourceFile) {
+                if (!sourceFile || sourceFile.virtualText === void 0) {
                     if (path.startsWith(cacheRoot)) {
                         path = path.replace(cacheRoot, mutualRoot);
                     }
@@ -287,36 +286,47 @@ export async function createProject(configPath: string): Promise<Project> {
 }
 
 async function resolveFiles(config: any, configRoot: string) {
-    const [includes, excludes] = await Promise.all([
-        config.include?.map(resolve),
-        config.exclude?.map(resolve),
-    ].map((tasks) => (tasks ? Promise.all(tasks) : [])));
+    const excludes = await Promise.all(
+        config.exclude?.map(async (pattern: string) => (
+            join(configRoot, pattern.includes("*") ? pattern : await transformPattern(pattern))
+        )),
+    );
 
     return {
-        includes: Object.fromEntries<string[]>(includes),
-        excludes: Object.fromEntries<string[]>(excludes),
+        includes: new Set<string>((
+            await Promise.all(config.include?.map(resolve))
+        ).flat()),
+        isExcluded(path: string) {
+            return excludes.some((pattern) => picomatch.isMatch(path, pattern));
+        },
     };
 
     async function resolve(pattern: string) {
         const originalKey = pattern;
         if (!pattern.includes("*")) {
-            try {
-                const path = join(configRoot, pattern);
-                const stats = await stat(path);
-                if (stats.isFile()) {
-                    return [originalKey, [path]];
-                }
+            pattern = await transformPattern(pattern);
+            if (originalKey === pattern) {
+                return join(configRoot, pattern);
             }
-            catch {}
-            pattern = join(pattern, "**/*");
         }
 
-        const files = await glob(pattern, {
+        return glob(pattern, {
             absolute: true,
             cwd: configRoot,
             ignore: "**/node_modules/**",
         });
-        return [originalKey, files];
+    }
+
+    async function transformPattern(pattern: string) {
+        try {
+            const path = join(configRoot, pattern);
+            const stats = await stat(path);
+            if (stats.isFile()) {
+                return pattern;
+            }
+        }
+        catch {}
+        return join(pattern, "**/*");
     }
 }
 
