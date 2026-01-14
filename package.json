@@ -1,7 +1,7 @@
 {
   "name": "vue-tsgo",
   "type": "module",
-  "version": "0.0.1-yggdrasill.0",
+  "version": "0.0.1-yggdrasill.1",
   "packageManager": "pnpm@10.28.0",
   "description": "Type checker for Vue SFCs with TypeScript 7 integration",
   "author": "KazariEX",
@@ -10,11 +10,13 @@
   "keywords": [],
   "exports": {
     ".": "./dist/index.mjs",
+    "./cli": "./dist/cli.mjs",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.mts",
-  "bin": "./dist/cli.mjs",
+  "bin": "./bin/vue-tsgo.mjs",
   "files": [
+    "bin",
     "dist"
   ],
   "scripts": {

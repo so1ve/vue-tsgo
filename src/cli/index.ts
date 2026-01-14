@@ -4,7 +4,7 @@ import { find } from "tsconfck";
 import packageJson from "../../package.json";
 import { createProject } from "../core/project";
 
-const cli = Cli()
+export const cli = Cli()
     .name("Vue Tsgo")
     .scriptName("vue-tsgo")
     .description(packageJson.description)
@@ -36,5 +36,3 @@ const cli = Cli()
             process.exit(1);
         }
     });
-
-await cli.parse();
