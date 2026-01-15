@@ -41,15 +41,17 @@ export async function createProject(configPath: string): Promise<Project> {
     const targetToFileMap = new Map<string, SourceFile>();
 
     const { includes, isExcluded } = await resolveFiles(parsed.tsconfig, configRoot);
+    const includeSet = new Set(Object.values(includes).flat());
     const mutualRoot = getMutualRoot(Object.keys(includes), configRoot);
+    const toTargetPath = (path: string) => join(cacheRoot, relative(mutualRoot, path));
 
-    for (const path of includes) {
+    for (const path of includeSet) {
         await processFile(path);
     }
 
     async function processFile(path: string) {
         if (isExcluded(path)) {
-            includes.delete(path);
+            includeSet.delete(path);
             return;
         }
 
@@ -58,13 +60,12 @@ export async function createProject(configPath: string): Promise<Project> {
         }
 
         const sourceText = await readFile(path, "utf-8");
-        const targetPath = join(cacheRoot, relative(mutualRoot, path));
-        const sourceFile = createSourceFile(path, targetPath, sourceText, vueCompilerOptions);
+        const sourceFile = createSourceFile(path, toTargetPath(path), sourceText, vueCompilerOptions);
         sourceToFileMap.set(path, sourceFile);
-        targetToFileMap.set(targetPath, sourceFile);
+        targetToFileMap.set(sourceFile.targetPath, sourceFile);
 
         for (const path of sourceFile.references) {
-            includes.add(path);
+            includeSet.add(path);
         }
     }
 
@@ -76,7 +77,7 @@ export async function createProject(configPath: string): Promise<Project> {
         await rm(cacheRoot, { recursive: true, force: true });
         await mkdir(cacheRoot, { recursive: true });
 
-        for (const path of includes) {
+        for (const path of includeSet) {
             const sourceFile = getSourceFile(path)!;
 
             await mkdir(dirname(sourceFile.targetPath), { recursive: true });
@@ -104,7 +105,7 @@ export async function createProject(configPath: string): Promise<Project> {
             }
         }
 
-        const targetConfigPath = join(cacheRoot, relative(mutualRoot, configPath));
+        const targetConfigPath = toTargetPath(configPath);
         const targetConfig = {
             ...parsed.tsconfig,
             extends: void 0,
@@ -120,6 +121,10 @@ export async function createProject(configPath: string): Promise<Project> {
             };
             await writeFile(stubConfigPath, JSON.stringify(stubConfig, null, 2));
         }
+
+        const nodeModulesPath = join(mutualRoot, "node_modules");
+        const targetNodeModulesPath = toTargetPath(nodeModulesPath);
+        await symlink(nodeModulesPath, targetNodeModulesPath);
     }
 
     async function check() {
@@ -127,8 +132,9 @@ export async function createProject(configPath: string): Promise<Project> {
         const packageManager = await detectPackageManager(configRoot);
         const command = !packageManager || packageManager.name === "npm" ? "npx" : packageManager.name;
 
+        const targetConfigPath = toTargetPath(configPath);
         const { stdout } = await $({ nothrow: true })`
-            ${command} tsgo --project ${cacheRoot}/tsconfig.json --pretty true
+            ${command} tsgo --project ${targetConfigPath} --pretty true
         `;
 
         const groups = parseDiagnostics(stripVTControlCharacters(stdout));
@@ -293,9 +299,9 @@ async function resolveFiles(config: any, configRoot: string) {
     );
 
     return {
-        includes: new Set<string>((
-            await Promise.all(config.include?.map(resolve))
-        ).flat()),
+        includes: Object.fromEntries<string[]>(
+            await Promise.all(config.include?.map(resolve)),
+        ),
         isExcluded(path: string) {
             return excludes.some((pattern) => picomatch.isMatch(path, pattern));
         },
@@ -306,15 +312,16 @@ async function resolveFiles(config: any, configRoot: string) {
         if (!pattern.includes("*")) {
             pattern = await transformPattern(pattern);
             if (originalKey === pattern) {
-                return join(configRoot, pattern);
+                return [originalKey, join(configRoot, pattern)];
             }
         }
 
-        return glob(pattern, {
+        const files = await glob(pattern, {
             absolute: true,
             cwd: configRoot,
             ignore: "**/node_modules/**",
         });
+        return [originalKey, files];
     }
 
     async function transformPattern(pattern: string) {

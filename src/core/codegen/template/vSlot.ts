@@ -58,6 +58,10 @@ export function* generateVSlot(
         yield* generateTemplateChild(options, ctx, child);
     }
     scope.end();
+
+    if (slotDir) {
+        yield `}${newLine}`;
+    }
 }
 
 function* generateSlotParameters(
