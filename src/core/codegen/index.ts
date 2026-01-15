@@ -52,7 +52,7 @@ export function createSourceFile(
         sourceFile.imports.push(item.specifier);
     }
     for (const item of findDynamicImports(sourceText)) {
-        sourceFile.imports.push(item.expression);
+        sourceFile.imports.push(item.expression.slice(1, -1));
     }
     for (const [, path] of sourceText.matchAll(referenceRE)) {
         sourceFile.references.push(path);

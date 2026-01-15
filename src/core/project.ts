@@ -58,7 +58,12 @@ export async function createProject(configPath: string): Promise<Project> {
             continue;
         }
 
-        const sourceText = await readFile(path, "utf-8");
+        const sourceText = await readFile(path, "utf-8").catch(() => void 0);
+        if (sourceText === void 0) {
+            includeSet.delete(path);
+            continue;
+        }
+
         const sourceFile = createSourceFile(path, toTargetPath(path), sourceText, vueCompilerOptions);
         sourceToFileMap.set(path, sourceFile);
         targetToFileMap.set(sourceFile.targetPath, sourceFile);
@@ -131,21 +136,21 @@ export async function createProject(configPath: string): Promise<Project> {
         `;
 
         const groups = parseDiagnostics(stripVTControlCharacters(stdout));
-        let withoutError = true;
+        const stats: { path: string; line: number; count: number }[] = [];
 
-        for (let [path, diagnostics] of Object.entries(groups)) {
-            const sourceFile = targetToFileMap.get(path);
+        for (const [originalPath, diagnostics] of Object.entries(groups)) {
+            const sourceFile = targetToFileMap.get(originalPath);
+            let sourcePath = sourceFile?.sourcePath;
 
             outer: for (let i = 0; i < diagnostics.length; i++) {
                 const diagnostic = diagnostics[i];
 
                 if (!sourceFile || sourceFile.type === "native") {
-                    if (path.startsWith(cacheRoot)) {
-                        path = path.replace(cacheRoot, mutualRoot);
+                    if (originalPath.startsWith(cacheRoot)) {
+                        sourcePath ??= originalPath.replace(cacheRoot, mutualRoot);
                     }
                     continue;
                 }
-                path = sourceFile.sourcePath;
 
                 // eslint-disable-next-line no-unreachable-loop
                 for (const [start, end] of sourceFile.mapper.toSourceRange(
@@ -168,8 +173,8 @@ export async function createProject(configPath: string): Promise<Project> {
                 diagnostics.splice(i--, 1);
             }
 
-            const relativePath = relative(process.cwd(), path);
-            const sourceText = sourceFile?.sourceText ?? await readFile(path, "utf-8");
+            const relativePath = relative(process.cwd(), sourcePath!);
+            const sourceText = sourceFile?.sourceText ?? await readFile(originalPath, "utf-8");
             const lines = sourceText.split("\n");
 
             for (const { start, end, code, message } of diagnostics) {
@@ -186,11 +191,34 @@ export async function createProject(configPath: string): Promise<Project> {
                     console.info(`\x1B[7m${start.line + i}\x1B[0m ${line}`);
                     console.info(`\x1B[7m${" ".repeat(padding)}\x1B[0m ${" ".repeat(columnStart)}${styleText("redBright", "~".repeat(columnEnd - columnStart))}\n`);
                 }
-                withoutError = false;
+            }
+
+            if (diagnostics.length) {
+                stats.push({
+                    path: relativePath,
+                    line: diagnostics[0].start.line,
+                    count: diagnostics.length,
+                });
+            }
+            else {
+                delete groups[originalPath];
             }
         }
 
-        return withoutError;
+        if (stats.length === 1) {
+            const { path, line, count } = stats[0];
+            console.info(`\nFound ${count} error${count > 1 ? "s" : ""} in the same file, starting at: ${path}${styleText("gray", `:${line}`)}\n`);
+        }
+        else if (stats.length > 1) {
+            const total = stats.reduce((prev, curr) => prev + curr.count, 0);
+            console.info(`\nFound ${total} errors in ${stats.length} files.\n`);
+            console.info(`Errors  Files`);
+            for (const { path, line, count } of stats) {
+                console.info(`${String(count).padStart(6)}  ${path}${styleText("gray", `:${line}`)}`);
+            }
+            console.info(``);
+        }
+        return stats.length === 0;
     }
 
     return {
@@ -321,6 +349,9 @@ function parseDiagnostics(stdout: string) {
                 line: diagnostic.start.line + (cursor - 3) / 2,
                 column: text.lastIndexOf("~") + 1 - padding,
             };
+        }
+        else if (text.startsWith("Found")) {
+            break;
         }
         cursor++;
     }
