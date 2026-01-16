@@ -146,7 +146,7 @@ export function* generateComponent(
             ? "__VLS_asFunctionalComponent0"
             : "__VLS_asFunctionalComponent1"
     }(${componentVar}, new ${componentVar}({${newLine}`;
-    yield* toString(propCodes);
+    yield toString(propCodes);
     yield `}))${endOfLine}`;
 
     yield `const `;
