@@ -63,7 +63,7 @@ export interface IRCustomBlock extends IRBlock {
     type: string;
 }
 
-export function createIR(fileName: string, sourceText: string) {
+export function createIR(sourceText: string) {
     const errors: CompilerDOM.CompilerError[] = [];
     const warnings: CompilerDOM.CompilerError[] = [];
 

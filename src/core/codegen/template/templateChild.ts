@@ -59,13 +59,12 @@ export function* generateTemplateChild(
         }
     }
     else if (node.type === CompilerDOM.NodeTypes.INTERPOLATION) {
-        const [content, offset] = parseInterpolationNode(node, options.template.content);
         yield* generateInterpolation(
             options,
             ctx,
             options.template,
-            content,
-            offset,
+            node.content.loc.source,
+            node.content.loc.start.offset,
             codeFeatures.verification,
             `(`,
             `)`,
@@ -115,18 +114,4 @@ function* collectSingleRootNodes(
     if (options.vueCompilerOptions.fallthroughComponentNames.includes(tag)) {
         yield* collectSingleRootNodes(options, child.children);
     }
-}
-
-function parseInterpolationNode(node: CompilerDOM.InterpolationNode, template: string) {
-    let start = node.content.loc.start.offset;
-    let end = node.content.loc.end.offset;
-
-    while (template[start - 1]?.trim() === "") {
-        start--;
-    }
-    while (template[end]?.trim() === "") {
-        end++;
-    }
-
-    return [template.slice(start, end), start] as const;
 }

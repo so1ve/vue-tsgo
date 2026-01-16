@@ -22,7 +22,7 @@ export function getAttributeValueOffset(node: CompilerDOM.TextNode) {
 
 export function getElementTagOffsets(node: CompilerDOM.ElementNode, template: IRTemplate) {
     const offsets = [
-        template.content.indexOf(node.tag, node.loc.start.offset),
+        template.ast.source.indexOf(node.tag, node.loc.start.offset),
     ];
     if (!node.isSelfClosing && template.lang === "html") {
         const endTagOffset = node.loc.start.offset + node.loc.source.lastIndexOf(node.tag);

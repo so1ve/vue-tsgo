@@ -90,53 +90,57 @@ export async function createProject(configPath: string): Promise<Project> {
 
     async function generate() {
         await rm(cacheRoot, { recursive: true, force: true });
-        await mkdir(cacheRoot, { recursive: true });
+        const tasks: (() => Promise<void>)[] = [];
 
         for (const path of includes) {
-            const sourceFile = sourceToFiles.get(path)!;
-            const targetPath = sourceFile.type === "virtual"
-                ? toTargetPath(path) + `.${sourceFile.virtualLang}`
-                : toTargetPath(path);
+            tasks.push(async () => {
+                const sourceFile = sourceToFiles.get(path)!;
+                const targetPath = sourceFile.type === "virtual"
+                    ? toTargetPath(path) + `.${sourceFile.virtualLang}`
+                    : toTargetPath(path);
 
-            await mkdir(dirname(targetPath), { recursive: true });
-            await writeFile(
-                targetPath,
-                sourceFile.type === "virtual" ? sourceFile.virtualText : sourceFile.sourceText,
-            );
+                await mkdir(dirname(targetPath), { recursive: true });
+                await writeFile(
+                    targetPath,
+                    sourceFile.type === "virtual" ? sourceFile.virtualText : sourceFile.sourceText,
+                );
+            });
         }
 
-        const types: string[] = ["template-helpers.d.ts"];
-        if (!vueCompilerOptions.checkUnknownProps) {
-            types.push("props-fallback.d.ts");
-        }
-        if (vueCompilerOptions.lib === "vue" && vueCompilerOptions.target < 3.5) {
-            types.push("vue-3.4-shims.d.ts");
-        }
-
-        const targetConfigPath = toTargetPath(configPath);
-        const targetConfig: TSConfig = {
-            ...parsed.tsconfig,
-            compilerOptions: {
-                ...parsed.tsconfig.compilerOptions,
-                types: [
-                    ...parsed.tsconfig.compilerOptions?.types ?? [],
-                    ...types.map((name) => join(vueCompilerOptions.typesRoot, name)),
-                ],
-            },
-            extends: void 0,
-        };
-        await mkdir(dirname(targetConfigPath), { recursive: true });
-        await writeFile(targetConfigPath, JSON.stringify(targetConfig, null, 2));
-
-        for (const path of [
-            join(mutualRoot, "package.json"),
-            join(mutualRoot, "node_modules"),
-        ]) {
-            try {
-                await symlink(path, toTargetPath(path));
+        tasks.push(async () => {
+            const types: string[] = ["template-helpers.d.ts"];
+            if (!vueCompilerOptions.checkUnknownProps) {
+                types.push("props-fallback.d.ts");
             }
-            catch {}
+            if (vueCompilerOptions.lib === "vue" && vueCompilerOptions.target < 3.5) {
+                types.push("vue-3.4-shims.d.ts");
+            }
+
+            const targetConfigPath = toTargetPath(configPath);
+            const targetConfig: TSConfig = {
+                ...parsed.tsconfig,
+                compilerOptions: {
+                    ...parsed.tsconfig.compilerOptions,
+                    types: [
+                        ...parsed.tsconfig.compilerOptions?.types ?? [],
+                        ...types.map((name) => join(vueCompilerOptions.typesRoot, name)),
+                    ],
+                },
+                extends: void 0,
+            };
+
+            await mkdir(dirname(targetConfigPath), { recursive: true });
+            await writeFile(targetConfigPath, JSON.stringify(targetConfig, null, 2));
+        });
+
+        for (const name of ["package.json", "node_modules"]) {
+            tasks.push(async () => {
+                const path = join(mutualRoot, name);
+                await symlink(path, toTargetPath(path)).catch(() => void 0);
+            });
         }
+
+        await Promise.all(tasks.map((task) => task()));
     }
 
     async function check() {
@@ -261,15 +265,13 @@ async function resolveFiles(config: TSConfig, configRoot: string) {
     );
 
     const excludes = await Promise.all(
-        config.exclude?.map(async (pattern: string) => (
-            join(configRoot, pattern.includes("*") ? pattern : await transformPattern(pattern))
+        config.exclude?.map(async (pattern) => picomatch(
+            join(configRoot, pattern.includes("*") ? pattern : await transformPattern(pattern)),
         )) ?? [],
     );
 
     return new Set(
-        includes.flat().filter((path) => (
-            excludes.every((pattern) => !picomatch.isMatch(path, pattern))
-        )),
+        includes.flat().filter((path) => excludes.every((match) => !match(path))),
     );
 
     async function transformPattern(pattern: string) {
@@ -368,11 +370,7 @@ function parseDiagnostics(stdout: string) {
 
     const groups: Record<string, typeof diagnostics> = {};
     for (const diagnostic of diagnostics) {
-        let group = groups[diagnostic.path];
-        if (!group) {
-            groups[diagnostic.path] = group = [];
-        }
-        group.push(diagnostic);
+        (groups[diagnostic.path] ??= []).push(diagnostic);
     }
     return groups;
 }

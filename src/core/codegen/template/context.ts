@@ -191,7 +191,7 @@ export function createTemplateCodegenContext() {
                     verification: false,
                 };
             }
-            if (data.expectError !== void 0) {
+            if (data.expectError) {
                 return {
                     ...features,
                     verification: {

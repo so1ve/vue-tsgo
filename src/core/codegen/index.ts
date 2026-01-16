@@ -1,9 +1,8 @@
-import { SourceMap } from "@vue/language-core";
+import { type Mapping, SourceMap, type VueCompilerOptions } from "@vue/language-core";
 import { camelize, capitalize } from "@vue/shared";
 import { findDynamicImports, findStaticImports } from "mlly";
 import { toString } from "muggle-string";
 import { basename, extname } from "pathe";
-import type { Mapping, VueCompilerOptions } from "@vue/language-core";
 import { createCompilerOptionsBuilder, parseLocalCompilerOptions } from "../compilerOptions";
 import { createIR, type IRBlock } from "../parse/ir";
 import { collectScriptRanges } from "./ranges/script";
@@ -64,7 +63,7 @@ function createVirtualFile(
     sourceText: string,
     vueCompilerOptions: VueCompilerOptions,
 ): SourceFile {
-    const ir = createIR(sourcePath, sourceText);
+    const ir = createIR(sourceText);
     const virtualLang = ir.scriptSetup?.lang ?? ir.script?.lang ?? "ts";
 
     // #region vueCompilerOptions
