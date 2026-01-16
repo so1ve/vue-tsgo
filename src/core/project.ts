@@ -227,17 +227,26 @@ export async function createProject(configPath: string): Promise<Project> {
 
         if (stats.length === 1) {
             const { path, line, count } = stats[0];
-            console.info(`\nFound ${count} error${count > 1 ? "s" : ""} in the same file, starting at: ${path}${styleText("gray", `:${line}`)}\n`);
+
+            if (count === 1) {
+                console.info(`\nFound ${count} error in ${path}${styleText("gray", `:${line}`)}\n`);
+            }
+            else {
+                console.info(`\nFound ${count} errors in the same file, starting at: ${path}${styleText("gray", `:${line}`)}\n`);
+            }
         }
         else if (stats.length > 1) {
             const total = stats.reduce((prev, curr) => prev + curr.count, 0);
+
             console.info(`\nFound ${total} errors in ${stats.length} files.\n`);
             console.info(`Errors  Files`);
+
             for (const { path, line, count } of stats) {
                 console.info(`${String(count).padStart(6)}  ${path}${styleText("gray", `:${line}`)}`);
             }
             console.info(``);
         }
+
         return stats.length === 0;
     }
 
