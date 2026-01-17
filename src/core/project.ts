@@ -12,7 +12,7 @@ import type { TSConfig } from "pkg-types";
 import packageJson from "../../package.json";
 import { createSourceFile, type SourceFile } from "./codegen";
 import { createCompilerOptionsBuilder } from "./compilerOptions";
-import type { CodeInformation } from "./types";
+import { isVerificationEnabled } from "./shared";
 
 export interface Project {
     runTsgo: () => Promise<void>;
@@ -315,12 +315,6 @@ function getMutualRoot(includes: Set<string>, configRoot: string) {
         }
     }
     return mutual.join("/");
-}
-
-function isVerificationEnabled(data: CodeInformation, code: number) {
-    return data.verification === true ||
-        typeof data.verification === "object" &&
-        data.verification.shouldReport?.(code) === true;
 }
 
 interface Diagnostic {

@@ -1,6 +1,7 @@
 import { hyphenate } from "@vue/shared";
 import type CompilerDOM from "@vue/compiler-dom";
 import type { IRTemplate } from "./parse/ir";
+import type { CodeInformation } from "./types";
 
 export { hyphenate as hyphenateTag };
 
@@ -31,4 +32,10 @@ export function getElementTagOffsets(node: CompilerDOM.ElementNode, template: IR
         }
     }
     return offsets as [number] | [number, number];
+}
+
+export function isVerificationEnabled(data: CodeInformation, code: number) {
+    return data.verification === true ||
+        typeof data.verification === "object" &&
+        data.verification.shouldReport(code) === true;
 }

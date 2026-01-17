@@ -1,4 +1,5 @@
 import CompilerDOM from "@vue/compiler-dom";
+import { isVerificationEnabled } from "../../shared";
 import { endOfLine, newLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import type { Code, CodeInformation } from "../../types";
@@ -196,11 +197,7 @@ export function createTemplateCodegenContext() {
                     ...features,
                     verification: {
                         shouldReport: (code) => {
-                            if (
-                                typeof features.verification !== "object"
-                                || !features.verification.shouldReport
-                                || features.verification.shouldReport(code) === true
-                            ) {
+                            if (isVerificationEnabled(features, code)) {
                                 data.expectError!.token++;
                             }
                             return false;
