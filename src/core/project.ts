@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { stripVTControlCharacters, styleText } from "node:util";
 import * as pkg from "empathic/package";
-import { detectPackageManager } from "nypm";
 import { ResolverFactory } from "oxc-resolver";
 import { dirname, join, relative, resolve } from "pathe";
 import picomatch from "picomatch";
@@ -23,11 +22,11 @@ export async function createProject(configPath: string): Promise<Project> {
     const configRoot = dirname(configPath);
     const configHash = createHash("sha256").update(configPath).digest("hex").slice(0, 8);
 
-    const cacheRoot = pkg.cache(`${packageJson.name}/${configHash}`, {
+    const targetRoot = pkg.cache(`${packageJson.name}/${configHash}`, {
         cwd: configRoot,
     })!;
-    if (cacheRoot === void 0) {
-        throw new Error("[Vue] Failed to find a cache directory.");
+    if (targetRoot === void 0) {
+        throw new Error("[Vue] Failed to find a target directory.");
     }
 
     const parsed = await parse(configPath);
@@ -76,9 +75,9 @@ export async function createProject(configPath: string): Promise<Project> {
         }
     }
 
-    const mutualRoot = getMutualRoot(includes, configRoot);
-    const toSourcePath = (path: string) => join(mutualRoot, relative(cacheRoot, path));
-    const toTargetPath = (path: string) => join(cacheRoot, relative(mutualRoot, path));
+    const sourceRoot = getMutualRoot(includes, configRoot);
+    const toSourcePath = (path: string) => join(sourceRoot, relative(targetRoot, path));
+    const toTargetPath = (path: string) => join(targetRoot, relative(sourceRoot, path));
     // avoid parsing errors for TS specific syntax in JS files
     const toTargetLang = (lang: string) => (lang === "js" ? "ts" : lang === "jsx" ? "tsx" : lang);
 
@@ -91,7 +90,7 @@ export async function createProject(configPath: string): Promise<Project> {
     }
 
     async function generate() {
-        await rm(cacheRoot, { recursive: true, force: true });
+        await rm(targetRoot, { recursive: true, force: true });
         const tasks: (() => Promise<void>)[] = [];
 
         for (const path of includes) {
@@ -137,7 +136,7 @@ export async function createProject(configPath: string): Promise<Project> {
 
         for (const name of ["package.json", "node_modules"]) {
             tasks.push(async () => {
-                const path = join(mutualRoot, name);
+                const path = join(sourceRoot, name);
                 await symlink(path, toTargetPath(path)).catch(() => void 0);
             });
         }
@@ -147,12 +146,15 @@ export async function createProject(configPath: string): Promise<Project> {
 
     async function check() {
         await generate();
-        const packageManager = await detectPackageManager(configRoot);
-        const command = !packageManager || packageManager.name === "npm" ? "npx" : packageManager.name;
+        const resolvedTsgo = await resolver.async(configRoot, "@typescript/native-preview/package.json");
+        if (resolvedTsgo?.path === void 0) {
+            // TODO:
+            return false;
+        }
 
-        const targetConfigPath = toTargetPath(configPath);
+        const tsgo = join(resolvedTsgo.path, "../bin/tsgo.js");
         const { stdout } = await $({ nothrow: true })`
-            ${command} tsgo --project ${targetConfigPath} --pretty true
+            node ${tsgo} --project "${toTargetPath(configPath)}" --pretty true
         `;
 
         const groups = parseDiagnostics(stripVTControlCharacters(stdout));
@@ -166,7 +168,7 @@ export async function createProject(configPath: string): Promise<Project> {
                 const diagnostic = diagnostics[i];
 
                 if (!sourceFile || sourceFile.type === "native") {
-                    if (originalPath.startsWith(cacheRoot)) {
+                    if (originalPath.startsWith(targetRoot)) {
                         sourcePath ??= toSourcePath(originalPath);
                     }
                     continue;
