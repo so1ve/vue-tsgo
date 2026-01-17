@@ -51,11 +51,6 @@ function* generateIdentifier(
     ctx: TemplateCodegenContext,
     prop: CompilerDOM.DirectiveNode,
 ): Generator<Code> {
-    if (!options.vueCompilerOptions.checkUnknownDirectives || isBuiltInDirective(prop.name)) {
-        yield `{} as any`;
-        return;
-    }
-
     const rawName = "v-" + prop.name;
     const boundary = yield* generateBoundary(
         "template",
@@ -69,10 +64,15 @@ function* generateIdentifier(
         rawName,
         "template",
         prop.loc.start.offset,
-        codeFeatures.verification,
+        options.vueCompilerOptions.checkUnknownDirectives && !isBuiltInDirective(prop.name)
+            ? codeFeatures.verification
+            : codeFeatures.none,
     );
     yield boundary.end();
-    ctx.accessVariable(camelize(rawName));
+
+    if (!isBuiltInDirective(prop.name)) {
+        ctx.accessVariable(camelize(rawName));
+    }
 }
 
 function* generateArg(
