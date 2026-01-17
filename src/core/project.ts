@@ -15,7 +15,7 @@ import { createCompilerOptionsBuilder } from "./compilerOptions";
 import type { CodeInformation } from "./types";
 
 export interface Project {
-    check: () => Promise<boolean>;
+    runTsgo: () => Promise<void>;
 }
 
 export async function createProject(configPath: string): Promise<Project> {
@@ -144,59 +144,56 @@ export async function createProject(configPath: string): Promise<Project> {
         await Promise.all(tasks.map((task) => task()));
     }
 
-    async function check() {
+    async function runTsgo() {
         await generate();
         const resolvedTsgo = await resolver.async(configRoot, "@typescript/native-preview/package.json");
         if (resolvedTsgo?.path === void 0) {
             // TODO:
-            return false;
+            process.exit(1);
         }
 
         const tsgo = join(resolvedTsgo.path, "../bin/tsgo.js");
-        const { stdout } = await $({ nothrow: true })`
+        const output = await $({ nothrow: true })`
             ${process.execPath} ${tsgo} --project "${toTargetPath(configPath)}" --pretty true
         `;
 
-        const groups = parseDiagnostics(stripVTControlCharacters(stdout));
+        const { groups, rest } = parseStdout(output.stdout);
         const stats: { path: string; line: number; count: number }[] = [];
 
         for (const [originalPath, diagnostics] of Object.entries(groups)) {
             const sourceFile = targetToFiles.get(originalPath);
-            let sourcePath = sourceFile?.sourcePath;
+            const sourcePath = sourceFile?.sourcePath ?? (
+                originalPath.startsWith(targetRoot) ? toSourcePath(originalPath) : originalPath
+            );
 
-            outer: for (let i = 0; i < diagnostics.length; i++) {
-                const diagnostic = diagnostics[i];
+            if (sourceFile?.type === "virtual") {
+                outer: for (let i = 0; i < diagnostics.length; i++) {
+                    const diagnostic = diagnostics[i];
 
-                if (!sourceFile || sourceFile.type === "native") {
-                    if (originalPath.startsWith(targetRoot)) {
-                        sourcePath ??= toSourcePath(originalPath);
+                    // eslint-disable-next-line no-unreachable-loop
+                    for (const [start, end] of sourceFile.mapper.toSourceRange(
+                        sourceFile.getVirtualOffset(
+                            diagnostic.start.line,
+                            diagnostic.start.column,
+                        ),
+                        sourceFile.getVirtualOffset(
+                            diagnostic.end.line,
+                            diagnostic.end.column,
+                        ),
+                        true,
+                        (data) => isVerificationEnabled(data, diagnostic.code),
+                    )) {
+                        diagnostic.start = sourceFile.getSourceLineAndColumn(start);
+                        diagnostic.end = sourceFile.getSourceLineAndColumn(end);
+                        continue outer;
                     }
-                    continue;
-                }
 
-                // eslint-disable-next-line no-unreachable-loop
-                for (const [start, end] of sourceFile.mapper.toSourceRange(
-                    sourceFile.getVirtualOffset(
-                        diagnostic.start.line,
-                        diagnostic.start.column,
-                    ),
-                    sourceFile.getVirtualOffset(
-                        diagnostic.end.line,
-                        diagnostic.end.column,
-                    ),
-                    true,
-                    (data) => isVerificationEnabled(data, diagnostic.code),
-                )) {
-                    diagnostic.start = sourceFile.getSourceLineAndColumn(start);
-                    diagnostic.end = sourceFile.getSourceLineAndColumn(end);
-                    continue outer;
+                    diagnostics.splice(i--, 1);
                 }
-
-                diagnostics.splice(i--, 1);
             }
 
-            const relativePath = relative(process.cwd(), sourcePath!);
-            const sourceText = sourceFile?.sourceText ?? await readFile(originalPath, "utf-8");
+            const relativePath = relative(process.cwd(), sourcePath);
+            const sourceText = sourceFile?.sourceText ?? await readFile(sourcePath, "utf-8");
             const lines = sourceText.split("\n");
 
             for (const { start, end, code, message } of diagnostics) {
@@ -231,10 +228,10 @@ export async function createProject(configPath: string): Promise<Project> {
             const { path, line, count } = stats[0];
 
             if (count === 1) {
-                console.info(`\nFound ${count} error in ${path}${styleText("gray", `:${line}`)}\n`);
+                console.info(`\nFound ${count} error in ${path}${styleText("gray", `:${line}`)}`);
             }
             else {
-                console.info(`\nFound ${count} errors in the same file, starting at: ${path}${styleText("gray", `:${line}`)}\n`);
+                console.info(`\nFound ${count} errors in the same file, starting at: ${path}${styleText("gray", `:${line}`)}`);
             }
         }
         else if (stats.length > 1) {
@@ -246,14 +243,19 @@ export async function createProject(configPath: string): Promise<Project> {
             for (const { path, line, count } of stats) {
                 console.info(`${String(count).padStart(6)}  ${path}${styleText("gray", `:${line}`)}`);
             }
-            console.info(``);
         }
 
-        return stats.length === 0;
+        if (rest.length) {
+            console.info(rest);
+        }
+
+        if (stats.length) {
+            process.exit(1);
+        }
     }
 
     return {
-        check,
+        runTsgo,
     };
 }
 
@@ -337,53 +339,69 @@ interface Diagnostic {
 
 const diagnosticRE = /^(?<path>.*?):(?<line>\d+):(?<column>\d+) - error TS(?<code>\d+): (?<message>.*)$/;
 
-function parseDiagnostics(stdout: string) {
+function parseStdout(stdout: string) {
     const diagnostics: Diagnostic[] = [];
-    const lines = stdout.trim().split("\n");
+    const plaintext = stripVTControlCharacters(stdout);
+    const lines = plaintext.trim().split("\n");
 
-    let cursor = 0;
-    let padding = 0;
+    let i = 0;
+    if (diagnosticRE.test(lines[0])) {
+        let cursor = 0;
+        let padding = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-        const text = lines[i];
-        const match = text.match(diagnosticRE);
+        for (; i < lines.length; i++) {
+            const text = lines[i];
+            if (text.startsWith("Found 1 ") || text.includes("in the same file")) {
+                i++;
+                break;
+            }
+            else if (text.startsWith("Found ")) {
+                i += 3;
+                while (lines[i].length) {
+                    i++;
+                }
+                break;
+            }
 
-        if (match) {
-            const { path, line, column, code, message } = match.groups!;
-            diagnostics.push({
-                path: resolve(path),
-                code: Number(code),
-                start: {
-                    line: Number(line),
-                    column: Number(column),
-                },
-                end: {
-                    line: 0,
-                    column: 0,
-                },
-                message,
-            });
-            cursor = 0;
+            const match = text.match(diagnosticRE);
+            if (match) {
+                const { path, line, column, code, message } = match.groups!;
+                diagnostics.push({
+                    path: resolve(path),
+                    code: Number(code),
+                    start: {
+                        line: Number(line),
+                        column: Number(column),
+                    },
+                    end: {
+                        line: 0,
+                        column: 0,
+                    },
+                    message,
+                });
+                cursor = 0;
+            }
+            else if (cursor % 2 === 0 && text.length) {
+                padding = text.split(" ", 1)[0].length;
+            }
+            else if (cursor % 2 === 1 && text.includes("~")) {
+                const diagnostic = diagnostics.at(-1)!;
+                diagnostic.end = {
+                    line: diagnostic.start.line + (cursor - 3) / 2,
+                    column: text.lastIndexOf("~") + 1 - padding,
+                };
+            }
+            cursor++;
         }
-        else if (cursor % 2 === 0 && text.length) {
-            padding = text.split(" ", 1)[0].length;
-        }
-        else if (cursor % 2 === 1 && text.includes("~")) {
-            const diagnostic = diagnostics.at(-1)!;
-            diagnostic.end = {
-                line: diagnostic.start.line + (cursor - 3) / 2,
-                column: text.lastIndexOf("~") + 1 - padding,
-            };
-        }
-        else if (text.startsWith("Found")) {
-            break;
-        }
-        cursor++;
     }
 
     const groups: Record<string, typeof diagnostics> = {};
     for (const diagnostic of diagnostics) {
         (groups[diagnostic.path] ??= []).push(diagnostic);
     }
-    return groups;
+
+    return {
+        groups,
+        rest: lines.slice(i).join("\n"),
+    };
 }
