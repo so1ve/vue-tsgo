@@ -39,7 +39,7 @@ export async function createProject(configPath: string): Promise<Project> {
         extensions: [".js", ".jsx", ".ts", ".tsx", ".d.ts", ".json", ".vue"],
     });
 
-    for (const extended of parsed.extended?.toReversed() ?? []) {
+    for (const extended of parsed.extended?.toReversed() ?? [parsed]) {
         if ("vueCompilerOptions" in extended.tsconfig) {
             builder.add(extended.tsconfig.vueCompilerOptions, dirname(extended.tsconfigFile));
         }
