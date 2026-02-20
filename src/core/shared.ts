@@ -7,7 +7,7 @@ import type { IRTemplate } from "./parse/ir";
 import type { CodeInformation } from "./types";
 
 export async function runTsgoCommand(
-    resolve: (cwd: string, request: string) => Promise<{ path?: string }>,
+    resolve: (cwd: string, request: string) => { path?: string } | Promise<{ path?: string }>,
     cwd: string,
     args: string[],
     options?: Partial<Options>,

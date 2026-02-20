@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Clerc, defineCommand, helpPlugin, versionPlugin } from "clerc";
-import resolver from "oxc-resolver";
+import { sync as resolveSync } from "oxc-resolver";
 import { join, resolve } from "pathe";
 import { find } from "tsconfck";
 import packageJson from "../../package.json";
@@ -47,7 +47,7 @@ await Clerc.create()
         command: false,
         footer: async () => {
             const { stdout: tsgoHelpText } = await runTsgoCommand(
-                async (...args) => resolver.sync(...args),
+                resolveSync,
                 process.cwd(),
                 ["--help"],
                 {
