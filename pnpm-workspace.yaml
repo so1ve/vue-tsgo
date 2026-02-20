@@ -6,7 +6,7 @@ packages:
 catalog:
   "@types/node": ^25.2.0
   "@types/picomatch": ^4.0.2
-  "@typescript/native-preview": 7.0.0-dev.20260114.1
+  "@typescript/native-preview": 7.0.0-dev.20260220.1
   "@vue/compiler-dom": ^3.5.27
   "@vue/language-core": ^3.2.4
   "@vue/shared": ^3.5.27

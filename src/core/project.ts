@@ -5,7 +5,6 @@ import * as pkg from "empathic/package";
 import { ResolverFactory } from "oxc-resolver";
 import { dirname, extname, join, relative, resolve } from "pathe";
 import picomatch from "picomatch";
-import { exec } from "tinyexec";
 import { glob } from "tinyglobby";
 import { parse } from "tsconfck";
 import type { VueCompilerOptions } from "@vue/language-core";
@@ -148,15 +147,8 @@ export async function createProject(configPath: string): Promise<Project> {
 
     async function runTsgo(args: string[] = []) {
         await generate();
-        const resolvedTsgo = await resolver.async(configRoot, "@typescript/native-preview/package.json");
-        if (resolvedTsgo?.path === void 0) {
-            console.error(`[Vue] Failed to resolve the path of tsgo. Please ensure the @typescript/native-preview package is installed.`);
-            process.exit(1);
-        }
 
-        const tsgo = join(resolvedTsgo.path, "../bin/tsgo.js");
-        const output = await exec(process.execPath, [
-            tsgo,
+        const output = await runTsgoCommand(resolver.async.bind(resolver), configRoot, [
             ...["--project", toTargetPath(configPath)],
             ...["--pretty", "true"],
             ...args,

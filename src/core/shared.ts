@@ -1,20 +1,25 @@
 import { hyphenate } from "@vue/shared";
-import resolver from "oxc-resolver";
 import { join } from "pathe";
-import { x } from "tinyexec";
+import { exec } from "tinyexec";
 import type CompilerDOM from "@vue/compiler-dom";
+import type { Options } from "tinyexec";
 import type { IRTemplate } from "./parse/ir";
 import type { CodeInformation } from "./types";
 
-export function runTsgoCommand(cwd: string, args: string[]) {
-    const resolvedTsgo = resolver.sync(cwd, "@typescript/native-preview/package.json");
+export async function runTsgoCommand(
+    resolve: (cwd: string, request: string) => Promise<{ path?: string }>,
+    cwd: string,
+    args: string[],
+    options?: Partial<Options>,
+) {
+    const resolvedTsgo = await resolve(cwd, "@typescript/native-preview/package.json");
     if (resolvedTsgo?.path === void 0) {
-        // TODO:
+        console.error(`[Vue] Failed to resolve the path of tsgo. Please ensure the @typescript/native-preview package is installed.`);
         process.exit(1);
     }
-
     const tsgo = join(resolvedTsgo.path, "../bin/tsgo.js");
-    return x(process.execPath, [tsgo, ...args]);
+
+    return exec(process.execPath, [tsgo, ...args], options);
 }
 
 export { hyphenate as hyphenateTag };

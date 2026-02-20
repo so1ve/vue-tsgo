@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Clerc, defineCommand, helpPlugin, versionPlugin } from "clerc";
+import resolver from "oxc-resolver";
 import { join, resolve } from "pathe";
 import { find } from "tsconfck";
 import packageJson from "../../package.json";
@@ -8,6 +9,7 @@ import { runTsgoCommand } from "../core/shared";
 
 const tsgo = defineCommand({
     name: "",
+    description: packageJson.description,
     flags: {
         project: {
             type: String,
@@ -40,15 +42,25 @@ const tsgo = defineCommand({
     await project.runTsgo(context.rawParsed.rawUnknown);
 });
 
-const { stdout: tsgoHelpText } = await runTsgoCommand(
-    process.cwd(),
-    ["--help"],
-);
-
 await Clerc.create()
     .use(helpPlugin({
         command: false,
-        footer: "-".repeat(40) + `\n` + tsgoHelpText,
+        footer: async () => {
+            const { stdout: tsgoHelpText } = await runTsgoCommand(
+                async (...args) => resolver.sync(...args),
+                process.cwd(),
+                ["--help"],
+                {
+                    nodeOptions: {
+                        env: {
+                            FORCE_COLOR: "1",
+                        },
+                    },
+                },
+            );
+
+            return "-".repeat(40) + `\n` + tsgoHelpText;
+        },
     }))
     .use(versionPlugin())
     .name("Vue Tsgo")
