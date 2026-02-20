@@ -60,7 +60,7 @@ export function* generateSetupGeneric(
         propTypes.push(names.PublicProps);
     }
     if (scriptSetupRanges.defineProps?.arg) {
-        yield `const __VLS_propsOption = `;
+        yield `const ${names.propsOption} = `;
         yield section(
             scriptSetup,
             scriptSetupRanges.defineProps.arg.start,
@@ -72,7 +72,7 @@ export function* generateSetupGeneric(
         propTypes.push(
             `import("${vueCompilerOptions.lib}").${
                 vueCompilerOptions.target >= 3.3 ? `ExtractPublicPropTypes` : `ExtractPropTypes`
-            }<typeof __VLS_propsOption>`,
+            }<typeof ${names.propsOption}>`,
         );
     }
     if (scriptSetupRanges.defineEmits || scriptSetupRanges.defineModel.length) {
@@ -246,7 +246,10 @@ export function* generateSetupBody(
             insert(callExp.end, ` as typeof ${names.dollars}.$slots)`);
         }
     }
-    for (const { callExp, arg } of scriptSetupRanges.useTemplateRef) {
+    for (const { callExp, arg, typeArg } of scriptSetupRanges.useTemplateRef) {
+        if (typeArg) {
+            continue;
+        }
         insert(callExp.start, `(`);
         insert(
             callExp.end,
@@ -278,7 +281,7 @@ export function* generateSetupBody(
             yield* generateComponent(options, ctx, scriptSetup, scriptSetupRanges);
             yield endOfLine;
             yield* output;
-            yield `{} as ${ctx.localTypes.WithSlots}<typeof __VLS_base, ${names.Slots}>${endOfLine}`;
+            yield `{} as ${ctx.localTypes.WithSlots}<typeof ${names.base}, ${names.Slots}>${endOfLine}`;
         }
         else {
             yield* output;

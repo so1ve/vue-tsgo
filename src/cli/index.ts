@@ -14,6 +14,12 @@ const tsgo = defineCommand({
             short: "p",
             description: "Path to tsconfig.json file",
         },
+        pretty: {
+            type: Boolean,
+            help: {
+                show: false,
+            },
+        },
     },
 }, async (context) => {
     let configPath = context.flags.project;
@@ -31,7 +37,7 @@ const tsgo = defineCommand({
     }
 
     const project = await createProject(configPath);
-    await project.runTsgo();
+    await project.runTsgo(context.rawParsed.rawUnknown);
 });
 
 const { stdout: tsgoHelpText } = await runTsgoCommand(

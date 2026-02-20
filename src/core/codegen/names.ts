@@ -15,6 +15,7 @@ export const names = {
         intrinsics: "__VLS_intrinsics",
         modelEmit: "__VLS_modelEmit",
         props: "__VLS_props",
+        propsOption: "__VLS_propsOption",
         self: "__VLS_self",
         setup: "__VLS_setup",
         slots: "__VLS_slots",

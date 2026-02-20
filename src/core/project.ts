@@ -3,10 +3,12 @@ import { mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises"
 import { stripVTControlCharacters, styleText } from "node:util";
 import * as pkg from "empathic/package";
 import { ResolverFactory } from "oxc-resolver";
-import { dirname, join, relative, resolve } from "pathe";
+import { dirname, extname, join, relative, resolve } from "pathe";
 import picomatch from "picomatch";
+import { exec } from "tinyexec";
 import { glob } from "tinyglobby";
 import { parse } from "tsconfck";
+import type { VueCompilerOptions } from "@vue/language-core";
 import type { TSConfig } from "pkg-types";
 import packageJson from "../../package.json";
 import { createSourceFile, type SourceFile } from "./codegen";
@@ -14,7 +16,7 @@ import { createCompilerOptionsBuilder } from "./compilerOptions";
 import { isVerificationEnabled, runTsgoCommand } from "./shared";
 
 export interface Project {
-    runTsgo: () => Promise<void>;
+    runTsgo: (args?: string[]) => Promise<void>;
 }
 
 export async function createProject(configPath: string): Promise<Project> {
@@ -37,14 +39,14 @@ export async function createProject(configPath: string): Promise<Project> {
         extensions: [".js", ".jsx", ".ts", ".tsx", ".d.ts", ".json", ".vue"],
     });
 
-    for (const extended of parsed.extended?.toReversed() ?? []) {
+    for (const extended of parsed.extended?.toReversed() ?? [parsed]) {
         if ("vueCompilerOptions" in extended.tsconfig) {
             builder.add(extended.tsconfig.vueCompilerOptions, dirname(extended.tsconfigFile));
         }
     }
     const vueCompilerOptions = builder.build();
 
-    const includes = await resolveFiles(parsed.tsconfig, configRoot);
+    const includes = await resolveFiles(parsed.tsconfig, configRoot, vueCompilerOptions);
     const sourceToFiles = new Map<string, SourceFile>();
     const targetToFiles = new Map<string, SourceFile>();
 
@@ -119,6 +121,7 @@ export async function createProject(configPath: string): Promise<Project> {
             const targetConfigPath = toTargetPath(configPath);
             const targetConfig: TSConfig = {
                 ...parsed.tsconfig,
+                extends: void 0,
                 compilerOptions: {
                     ...parsed.tsconfig.compilerOptions,
                     types: [
@@ -126,7 +129,7 @@ export async function createProject(configPath: string): Promise<Project> {
                         ...types.map((name) => join(vueCompilerOptions.typesRoot, name)),
                     ],
                 },
-                extends: void 0,
+                include: parsed.tsconfig.include?.map(toTargetPath),
             };
 
             await mkdir(dirname(targetConfigPath), { recursive: true });
@@ -143,13 +146,20 @@ export async function createProject(configPath: string): Promise<Project> {
         await Promise.all(tasks.map((task) => task()));
     }
 
-    async function runTsgo() {
+    async function runTsgo(args: string[] = []) {
         await generate();
-        const output = await runTsgoCommand(configRoot, [
-            "--project",
-            toTargetPath(configPath),
-            "--pretty",
-            "true",
+        const resolvedTsgo = await resolver.async(configRoot, "@typescript/native-preview/package.json");
+        if (resolvedTsgo?.path === void 0) {
+            console.error(`[Vue] Failed to resolve the path of tsgo. Please ensure the @typescript/native-preview package is installed.`);
+            process.exit(1);
+        }
+
+        const tsgo = join(resolvedTsgo.path, "../bin/tsgo.js");
+        const output = await exec(process.execPath, [
+            tsgo,
+            ...["--project", toTargetPath(configPath)],
+            ...["--pretty", "true"],
+            ...args,
         ]);
 
         const { groups, rest } = parseStdout(output.stdout);
@@ -162,6 +172,14 @@ export async function createProject(configPath: string): Promise<Project> {
             );
 
             if (sourceFile?.type === "virtual") {
+                if (
+                    sourceFile.virtualLang !== "ts" &&
+                    sourceFile.virtualLang !== "tsx" &&
+                    parsed.tsconfig.compilerOptions?.checkJs !== true
+                ) {
+                    diagnostics.length = 0;
+                }
+
                 outer: for (let i = 0; i < diagnostics.length; i++) {
                     const diagnostic = diagnostics[i];
 
@@ -254,16 +272,17 @@ export async function createProject(configPath: string): Promise<Project> {
     };
 }
 
-async function resolveFiles(config: TSConfig, configRoot: string) {
+async function resolveFiles(config: TSConfig, configRoot: string, vueCompilerOptions: VueCompilerOptions) {
+    const extensions = new Set([
+        ...[".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".mts", ".cjs", ".cts"],
+        ...vueCompilerOptions.extensions,
+    ]);
+
     const includes = await Promise.all(
         config.include?.map(async (pattern) => {
-            const originalKey = pattern;
-
+            pattern = await transformPattern(pattern);
             if (!pattern.includes("*")) {
-                pattern = await transformPattern(pattern);
-                if (originalKey === pattern) {
-                    return join(configRoot, pattern);
-                }
+                return join(configRoot, pattern);
             }
 
             return glob(pattern, {
@@ -276,15 +295,20 @@ async function resolveFiles(config: TSConfig, configRoot: string) {
 
     const excludes = await Promise.all(
         config.exclude?.map(async (pattern) => picomatch(
-            join(configRoot, pattern.includes("*") ? pattern : await transformPattern(pattern)),
+            join(configRoot, await transformPattern(pattern)),
         )) ?? [],
     );
 
     return new Set(
-        includes.flat().filter((path) => excludes.every((match) => !match(path))),
+        includes.flat().filter((path) => (
+            excludes.every((match) => !match(path)) && extensions.has(extname(path))
+        )),
     );
 
     async function transformPattern(pattern: string) {
+        if (pattern.includes("*")) {
+            return pattern;
+        }
         try {
             const path = join(configRoot, pattern);
             const stats = await stat(path);
