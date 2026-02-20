@@ -46,20 +46,25 @@ await Clerc.create()
     .use(helpPlugin({
         command: false,
         footer: async () => {
-            const { stdout: tsgoHelpText } = await runTsgoCommand(
+            console.log();
+            console.log("-".repeat(40));
+            console.log();
+
+            await runTsgoCommand(
                 resolveSync,
                 process.cwd(),
                 ["--help"],
                 {
                     nodeOptions: {
-                        env: {
-                            FORCE_COLOR: "1",
-                        },
+                        // use the same stdio as the current process
+                        // to ensure the help text is well formatted in the terminal
+                        stdio: "inherit",
                     },
                 },
             );
 
-            return "-".repeat(40) + `\n` + tsgoHelpText;
+            // fake it - the `footer` getter expects a string, but we have already printed the help text directly to the terminal, so we just return an empty string here.
+            return "";
         },
     }))
     .use(versionPlugin())
