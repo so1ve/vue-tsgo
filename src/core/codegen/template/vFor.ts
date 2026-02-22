@@ -1,6 +1,7 @@
 import CompilerDOM from "@vue/compiler-dom";
 import { parseSync } from "oxc-parser";
 import { codeFeatures } from "../codeFeatures";
+import { helpers } from "../names";
 import { collectBindingIdentifiers } from "../ranges/binding";
 import { newLine } from "../utils";
 import { generateInterpolation } from "./interpolation";
@@ -30,7 +31,7 @@ export function* generateVFor(
     }
     yield `] of `;
     if (source.type === CompilerDOM.NodeTypes.SIMPLE_EXPRESSION) {
-        yield `__VLS_vFor(`;
+        yield `${helpers.vFor}(`;
         yield* generateInterpolation(
             options,
             ctx,

@@ -1,7 +1,7 @@
 import CompilerDOM from "@vue/compiler-dom";
 import { getAttributeValueOffset, getElementTagOffsets } from "../../shared";
 import { codeFeatures } from "../codeFeatures";
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { endOfLine, newLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import { generateElementProps, generatePropExp } from "./elementProps";
@@ -29,7 +29,7 @@ export function* generateSlotOutlet(
     ));
 
     if (options.hasDefineSlots) {
-        yield `__VLS_asFunctionalSlot(`;
+        yield `${helpers.asFunctionalSlot}(`;
         if (nameProp) {
             let codes: Iterable<Code>;
             if (nameProp.type === CompilerDOM.NodeTypes.ATTRIBUTE && nameProp.value) {
@@ -130,7 +130,7 @@ export function* generateSlotOutlet(
             nameProp.exp?.type === CompilerDOM.NodeTypes.SIMPLE_EXPRESSION
         ) {
             const expVar = ctx.getInternalVariable();
-            yield `var ${expVar} = __VLS_tryAsConstant(`;
+            yield `var ${expVar} = ${helpers.tryAsConstant}(`;
             yield* generateInterpolation(
                 options,
                 ctx,

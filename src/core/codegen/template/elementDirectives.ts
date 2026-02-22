@@ -1,7 +1,7 @@
 import CompilerDOM from "@vue/compiler-dom";
 import { camelize, isBuiltInDirective } from "@vue/shared";
 import { codeFeatures } from "../codeFeatures";
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { endOfLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import { generateCamelized } from "../utils/camelized";
@@ -34,9 +34,9 @@ export function* generateElementDirectives(
             prop.loc.end.offset,
             codeFeatures.verification,
         );
-        yield `__VLS_asFunctionalDirective(`;
+        yield `${helpers.asFunctionalDirective}(`;
         yield* generateIdentifier(options, ctx, prop);
-        yield `, {} as import("${options.vueCompilerOptions.lib}").ObjectDirective)(null!, { ...__VLS_directiveBindingRestFields, `;
+        yield `, {} as import("${options.vueCompilerOptions.lib}").ObjectDirective)(null!, { ...${helpers.directiveBindingRestFields}, `;
         yield* generateArg(options, ctx, prop);
         yield* generateModifiers(options, ctx, prop);
         yield* generateValue(options, ctx, prop);

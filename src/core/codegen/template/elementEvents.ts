@@ -2,6 +2,7 @@ import CompilerDOM from "@vue/compiler-dom";
 import { camelize, capitalize } from "@vue/shared";
 import { type Node, parseSync, type Program } from "oxc-parser";
 import { codeFeatures } from "../codeFeatures";
+import { helpers } from "../names";
 import { endOfLine, identifierRE, newLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import { generateCamelized } from "../utils/camelized";
@@ -34,7 +35,7 @@ export function* generateElementEvents(
         ) {
             if (!emitVar) {
                 emitVar = ctx.getInternalVariable();
-                yield `let ${emitVar}!: __VLS_ResolveEmits<typeof ${componentVar}, typeof ${getCtxVar()}.emit>${endOfLine}`;
+                yield `let ${emitVar}!: ${helpers.ResolveEmits}<typeof ${componentVar}, typeof ${getCtxVar()}.emit>${endOfLine}`;
             }
 
             let source = prop.arg?.loc.source ?? "model-value";
@@ -55,7 +56,7 @@ export function* generateElementEvents(
             const emitName = emitPrefix + source;
             const camelizedEmitName = camelize(emitName);
 
-            yield `const ${ctx.getInternalVariable()}: __VLS_NormalizeComponentEvent<typeof ${getPropsVar()}, typeof ${emitVar}, "${propName}", "${emitName}", "${camelizedEmitName}"> = ({${newLine}`;
+            yield `const ${ctx.getInternalVariable()}: ${helpers.NormalizeComponentEvent}<typeof ${getPropsVar()}, typeof ${emitVar}, "${propName}", "${emitName}", "${camelizedEmitName}"> = ({${newLine}`;
             if (prop.name === "on") {
                 yield* generateEventArg(options, source, start!, propPrefix.slice(0, -1));
                 yield `: `;

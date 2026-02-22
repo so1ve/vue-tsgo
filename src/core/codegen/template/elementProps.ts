@@ -4,7 +4,7 @@ import picomatch from "picomatch";
 import type { VueCompilerOptions } from "@vue/language-core";
 import { getAttributeValueOffset, hyphenateAttr, hyphenateTag } from "../../shared";
 import { codeFeatures } from "../codeFeatures";
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { identifierRE, newLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import { generateCamelized } from "../utils/camelized";
@@ -157,7 +157,7 @@ export function* generateElementProps(
             if (isComponent && prop.name === "model" && prop.modifiers.length) {
                 const propertyName = prop.arg?.type === CompilerDOM.NodeTypes.SIMPLE_EXPRESSION
                     ? !prop.arg.isStatic
-                        ? `[__VLS_tryAsConstant(\`\${${prop.arg.content}}Modifiers\`)]`
+                        ? `[${helpers.tryAsConstant}(\`\${${prop.arg.content}}Modifiers\`)]`
                         : camelize(propName) + "Modifiers"
                     : `modelModifiers`;
                 yield* generateModifiers(options, ctx, prop, propertyName);

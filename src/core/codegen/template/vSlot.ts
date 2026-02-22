@@ -2,6 +2,7 @@ import CompilerDOM from "@vue/compiler-dom";
 import { replaceSourceRange } from "muggle-string";
 import { parseSync, type TSTypeAnnotation } from "oxc-parser";
 import { codeFeatures } from "../codeFeatures";
+import { helpers } from "../names";
 import { collectBindingIdentifiers } from "../ranges/binding";
 import { endOfLine, newLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
@@ -137,7 +138,7 @@ function* generateSlotParameters(
 
     yield `const [`;
     yield* interpolation;
-    yield `] = __VLS_vSlot(${slotVar}!`;
+    yield `] = ${helpers.vSlot}(${slotVar}!`;
 
     if (types.some((t) => t)) {
         yield `, `;

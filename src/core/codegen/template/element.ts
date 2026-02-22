@@ -3,7 +3,7 @@ import { camelize, capitalize } from "@vue/shared";
 import { toString } from "muggle-string";
 import { getAttributeValueOffset, getElementTagOffsets, hyphenateTag } from "../../shared";
 import { codeFeatures } from "../codeFeatures";
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { endOfLine, identifierRE, newLine } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import { generateCamelized } from "../utils/camelized";
@@ -111,7 +111,7 @@ export function* generateComponent(
             yield endOfLine;
         }
         else {
-            yield `let ${componentVar}!: __VLS_WithComponent<"${tag}", ${names.LocalComponents}, ${names.GlobalComponents}`;
+            yield `let ${componentVar}!: ${helpers.WithComponent}<"${tag}", ${names.LocalComponents}, ${names.GlobalComponents}`;
             yield originalNames.has(options.componentName)
                 ? `, typeof ${names.export}`
                 : `, void`;
@@ -143,8 +143,8 @@ export function* generateComponent(
     yield `// @ts-ignore${newLine}`;
     yield `const ${functionalVar} = ${
         options.vueCompilerOptions.checkUnknownProps
-            ? "__VLS_asFunctionalComponent0"
-            : "__VLS_asFunctionalComponent1"
+            ? helpers.asFunctionalComponent0
+            : helpers.asFunctionalComponent1
     }(${componentVar}, new ${componentVar}({${newLine}`;
     yield toString(propCodes);
     yield `}))${endOfLine}`;
@@ -184,7 +184,7 @@ export function* generateComponent(
     yield* propCodes;
     yield `}`;
     yield boundary.end();
-    yield `, ...__VLS_functionalComponentArgsRest(${functionalVar}))${endOfLine}`;
+    yield `, ...${helpers.functionalComponentArgsRest}(${functionalVar}))${endOfLine}`;
 
     yield* generateFailedExpressions(options, ctx, failedExpressionInfos);
     yield* generateElementEvents(
@@ -228,10 +228,10 @@ export function* generateComponent(
     }
 
     if (isCtxVarUsed) {
-        yield `var ${ctxVar}!: __VLS_FunctionalComponentCtx<typeof ${componentVar}, typeof ${vnodeVar}>${endOfLine}`;
+        yield `var ${ctxVar}!: ${helpers.FunctionalComponentCtx}<typeof ${componentVar}, typeof ${vnodeVar}>${endOfLine}`;
     }
     if (isPropsVarUsed) {
-        yield `var ${propsVar}!: __VLS_FunctionalComponentProps<typeof ${componentVar}, typeof ${vnodeVar}>${endOfLine}`;
+        yield `var ${propsVar}!: ${helpers.FunctionalComponentProps}<typeof ${componentVar}, typeof ${vnodeVar}>${endOfLine}`;
     }
     ctx.components.pop();
 }
@@ -246,8 +246,8 @@ export function* generateElement(
 
     yield `${
         options.vueCompilerOptions.checkUnknownProps
-            ? "__VLS_asFunctionalElement0"
-            : "__VLS_asFunctionalElement1"
+            ? helpers.asFunctionalElement0
+            : helpers.asFunctionalElement1
     }(${names.intrinsics}`;
     yield* generatePropertyAccess(
         options,
@@ -291,7 +291,7 @@ export function* generateElement(
 
     const templateRef = getTemplateRef(options, ctx, node);
     if (templateRef) {
-        let typeExp = `__VLS_Elements["${node.tag}"]`;
+        let typeExp = `${helpers.Elements}["${node.tag}"]`;
         if (ctx.inVFor) {
             typeExp += `[]`;
         }
@@ -299,7 +299,7 @@ export function* generateElement(
     }
 
     if (ctx.singleRootNodes.has(node)) {
-        ctx.singleRootElTypes.add(`__VLS_Elements["${node.tag}"]`);
+        ctx.singleRootElTypes.add(`${helpers.Elements}["${node.tag}"]`);
     }
 
     if (hasVBindAttrs(options, ctx, node)) {
@@ -322,9 +322,9 @@ export function* generateFragment(
     if (node.props.length) {
         yield `${
             options.vueCompilerOptions.checkUnknownProps
-                ? "__VLS_asFunctionalElement0"
-                : "__VLS_asFunctionalElement1"
-        }(__VLS_intrinsics.template)(`;
+                ? helpers.asFunctionalElement0
+                : helpers.asFunctionalElement1
+        }(${names.intrinsics}.template)(`;
         const boundary = yield* generateBoundary(
             "template",
             startTagOffset,

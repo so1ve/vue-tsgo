@@ -1,4 +1,4 @@
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { newLine } from "../utils";
 import { generateSpreadMerge } from "../utils/merge";
 import type { IRScriptSetup } from "../../parse/ir";
@@ -73,10 +73,10 @@ function* generateTypeEmitsOption(scriptSetupRanges: ScriptSetupRanges): Generat
 
 function* generateRuntimeEmitsOption(scriptSetupRanges: ScriptSetupRanges): Generator<Code> {
     if (scriptSetupRanges.defineModel.length) {
-        yield `{} as __VLS_NormalizeEmits<typeof ${names.modelEmit}>`;
+        yield `{} as ${helpers.NormalizeEmits}<typeof ${names.modelEmit}>`;
     }
     if (scriptSetupRanges.defineEmits?.arg) {
-        yield `{} as __VLS_NormalizeEmits<typeof ${scriptSetupRanges.defineEmits.name ?? names.emit}>`;
+        yield `{} as ${helpers.NormalizeEmits}<typeof ${scriptSetupRanges.defineEmits.name ?? names.emit}>`;
     }
 }
 
@@ -137,7 +137,7 @@ function* generateRuntimePropsOption(
         const attrsType = hasEmitsOption
             ? `Omit<${names.InheritedAttrs}, keyof ${names.EmitProps}>`
             : names.InheritedAttrs;
-        const propsType = `${ctx.localTypes.TypePropsToOption}<__VLS_PickNotAny<${ctx.localTypes.OmitIndexSignature}<${attrsType}>, {}>>`;
+        const propsType = `${ctx.localTypes.TypePropsToOption}<${helpers.PickNotAny}<${ctx.localTypes.OmitIndexSignature}<${attrsType}>, {}>>`;
         yield `{} as ${propsType}`;
     }
     if (ctx.generatedTypes.has(names.PublicProps) && options.vueCompilerOptions.target < 3.6) {

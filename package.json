@@ -24,7 +24,8 @@
     "dev": "tsdown -w",
     "prepack": "pnpm run build",
     "release": "bumpp --no-push -c \"release: v%s\"",
-    "test": "vitest"
+    "test": "vitest",
+    "generate-names": "unrun scripts/generate-names.ts"
   },
   "peerDependencies": {
     "@typescript/native-preview": "*"
@@ -56,6 +57,7 @@
     "eslint": "catalog:",
     "pkg-types": "catalog:",
     "tsdown": "catalog:",
+    "unrun": "catalog:",
     "vitest": "catalog:"
   }
 }

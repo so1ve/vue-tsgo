@@ -1,4 +1,5 @@
 import { camelize } from "@vue/shared";
+import { helpers } from "../names";
 import { identifierRE } from "../utils";
 import { generateBoundary } from "../utils/boundary";
 import { generateCamelized } from "../utils/camelized";
@@ -26,7 +27,7 @@ export function* generateObjectProperty(
                 code.slice(1, -1),
                 offset + 1,
                 features,
-                `[__VLS_tryAsConstant(`,
+                `[${helpers.tryAsConstant}(`,
                 `)]`,
             );
         }

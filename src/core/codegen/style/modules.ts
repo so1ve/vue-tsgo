@@ -1,4 +1,4 @@
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { endOfLine, newLine } from "../utils";
 import type { Code } from "../../types";
 import type { TemplateCodegenContext } from "../template/context";
@@ -28,7 +28,7 @@ export function* generateStyleModules(
         if (!vueCompilerOptions.strictCssModules) {
             yield `Record<string, string> & `;
         }
-        yield `__VLS_PrettifyGlobal<{}`;
+        yield `${helpers.PrettifyGlobal}<{}`;
         for (const className of style.classNames) {
             yield `${newLine} & { "`;
             yield className.text.slice(1);

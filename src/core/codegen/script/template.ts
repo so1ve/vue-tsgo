@@ -1,5 +1,5 @@
 import { codeFeatures } from "../codeFeatures";
-import { names } from "../names";
+import { helpers, names } from "../names";
 import { endOfLine, newLine, section } from "../utils";
 import { generateSpreadMerge } from "../utils/merge";
 import type { Code } from "../../types";
@@ -53,7 +53,7 @@ function* generateTemplateCtx(
         exps.push(`globalThis`);
     }
     if (self) {
-        exps.push(`{} as InstanceType<__VLS_PickNotAny<typeof ${self}, new () => {}>>`);
+        exps.push(`{} as InstanceType<${helpers.PickNotAny}<typeof ${self}, new () => {}>>`);
     }
     else {
         exps.push(`{} as import("${vueCompilerOptions.lib}").ComponentPublicInstance`);
@@ -69,7 +69,7 @@ function* generateTemplateCtx(
         emitTypes.push(`typeof ${names.modelEmit}`);
     }
     if (emitTypes.length) {
-        yield `type ${names.EmitProps} = __VLS_EmitsToProps<__VLS_NormalizeEmits<${emitTypes.join(` & `)}>>${endOfLine}`;
+        yield `type ${names.EmitProps} = ${helpers.EmitsToProps}<${helpers.NormalizeEmits}<${emitTypes.join(` & `)}>>${endOfLine}`;
         exps.push(`{} as { $emit: ${emitTypes.join(` & `)} }`);
     }
 
@@ -142,7 +142,7 @@ function* generateTemplateDirectives(
         yield `const ${names.directivesOption} = `;
         yield section(script, directives.start, directives.end, codeFeatures.verification);
         yield endOfLine;
-        types.push(`__VLS_ResolveDirectives<typeof ${names.directivesOption}>`);
+        types.push(`${helpers.ResolveDirectives}<typeof ${names.directivesOption}>`);
     }
 
     yield `type ${names.LocalDirectives} = ${types.length ? types.join(` & `) : `{}`}${endOfLine}`;

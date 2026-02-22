@@ -5,6 +5,10 @@ trustPolicy: no-downgrade
 packages:
   - playground
 
+overrides:
+  rolldown: 1.0.0-rc.5
+  vite: 8.0.0-beta.15
+
 catalog:
   "@types/node": ^25.3.0
   "@types/picomatch": ^4.0.2
@@ -30,8 +34,6 @@ catalog:
   tinyglobby: ^0.2.15
   tsconfck: ^3.1.6
   tsdown: ^0.20.3
+  unrun: ^0.2.27
   vitest: ^4.0.18
   vue: ^3.5.28
-
-onlyBuiltDependencies:
-  - esbuild
