@@ -186,10 +186,12 @@ export async function createProject(
             references: references.map((project) => ({
                 path: project.configPath,
             })),
-            // provide a explicit file list to avoid potential edge cases of path resolution
-            files: [...targetToFiles.keys()].map((path) => relative(tsconfigDir, path)).sort(),
-            include: void 0,
-            exclude: void 0,
+            include: parsed!.tsconfig.include?.map((pattern: string) => (
+                isAbsolute(pattern) ? relative(configRoot, pattern) : pattern
+            )),
+            exclude: parsed!.tsconfig.exclude?.map((pattern: string) => (
+                isAbsolute(pattern) ? relative(configRoot, pattern) : pattern
+            )),
         };
 
         // pre-collect and create all target directories
