@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { Clerc, defineCommand, helpPlugin, versionPlugin } from "clerc";
-import { sync as resolveSync } from "oxc-resolver";
 import { join, resolve } from "pathe";
 import { find } from "tsconfck";
 import packageJson from "../../package.json";
@@ -50,24 +49,19 @@ await Clerc.create()
             console.log("-".repeat(40));
             console.log();
 
-            await runTsgoCommand(
-                resolveSync,
-                process.cwd(),
-                ["--help"],
-                {
-                    nodeOptions: {
-                        // use the same stdio as the current process
-                        // to ensure the help text is well formatted in the terminal
-                        stdio: "inherit",
-                    },
+            await runTsgoCommand(["--help"], {
+                nodeOptions: {
+                    // use the same stdio as the current process
+                    // to ensure the help text is well formatted in the terminal
+                    stdio: "inherit",
                 },
-            );
-
-            // fake it - the `footer` getter expects a string, but we have already printed the help text directly to the terminal, so we just return an empty string here.
+            });
             return "";
         },
     }))
-    .use(versionPlugin())
+    .use(versionPlugin({
+        command: false,
+    }))
     .name("Vue Tsgo")
     .scriptName("vue-tsgo")
     .description(packageJson.description)

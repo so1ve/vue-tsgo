@@ -1,18 +1,20 @@
 import { hyphenate } from "@vue/shared";
+import { ResolverFactory } from "oxc-resolver";
 import { join } from "pathe";
-import { exec } from "tinyexec";
+import { exec, type Options } from "tinyexec";
 import type CompilerDOM from "@vue/compiler-dom";
-import type { Options } from "tinyexec";
 import type { IRTemplate } from "./parse/ir";
 import type { CodeInformation } from "./types";
 
 export async function runTsgoCommand(
-    resolve: (cwd: string, request: string) => { path?: string } | Promise<{ path?: string }>,
-    cwd: string,
     args: string[],
-    options?: Partial<Options>,
+    options?: Partial<Options> & {
+        resolver?: ResolverFactory;
+    },
 ) {
-    const resolvedTsgo = await resolve(cwd, "@typescript/native-preview/package.json");
+    const resolver = options?.resolver ?? ResolverFactory.default();
+    const resolvedTsgo = await resolver.async(process.cwd(), "@typescript/native-preview/package.json");
+
     if (resolvedTsgo?.path === void 0) {
         console.error(`[Vue] Failed to resolve the path of tsgo. Please ensure the @typescript/native-preview package is installed.`);
         process.exit(1);

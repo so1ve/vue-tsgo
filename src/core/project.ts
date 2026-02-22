@@ -205,11 +205,11 @@ export async function createProject(configPath: string): Promise<Project> {
     async function runTsgo(args: string[] = []) {
         await generate();
 
-        const output = await runTsgoCommand(resolver.async.bind(resolver), configRoot, [
+        const output = await runTsgoCommand([
             ...["--project", toTargetPath(configPath)],
             ...["--pretty", "true"],
             ...args,
-        ]);
+        ], { resolver });
 
         const { groups, rest } = parseStdout(output.stdout);
         const stats: { path: string; line: number; count: number }[] = [];
