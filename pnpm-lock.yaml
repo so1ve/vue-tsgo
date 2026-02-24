@@ -27,6 +27,9 @@ catalogs:
     '@zinkawaii/eslint-config':
       specifier: ^0.4.2
       version: 0.4.2
+    '@zinkawaii/scripts':
+      specifier: ^0.0.3
+      version: 0.0.3
     '@zinkawaii/tsconfig':
       specifier: ^0.0.2
       version: 0.0.2
@@ -95,6 +98,33 @@ overrides:
 importers:
 
   .:
+    devDependencies:
+      '@zinkawaii/eslint-config':
+        specifier: 'catalog:'
+        version: 0.4.2(@vue/compiler-sfc@3.5.28)(eslint@10.0.1(jiti@2.6.1))(typescript@5.9.3)(vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(yaml@2.8.2))
+      '@zinkawaii/scripts':
+        specifier: 'catalog:'
+        version: 0.0.3
+      '@zinkawaii/tsconfig':
+        specifier: 'catalog:'
+        version: 0.0.2
+      bumpp:
+        specifier: 'catalog:'
+        version: 10.4.1
+      eslint:
+        specifier: 'catalog:'
+        version: 10.0.1(jiti@2.6.1)
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.20.3(@typescript/native-preview@7.0.0-dev.20260219.1)(oxc-resolver@11.18.0)(synckit@0.11.12)(typescript@5.9.3)
+      unrun:
+        specifier: 'catalog:'
+        version: 0.2.27(synckit@0.11.12)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@types/node@25.3.0)(jiti@2.6.1)(yaml@2.8.2)
+
+  packages/core:
     dependencies:
       '@vue/compiler-dom':
         specifier: 'catalog:'
@@ -151,30 +181,9 @@ importers:
       '@typescript/native-preview':
         specifier: 'catalog:'
         version: 7.0.0-dev.20260219.1
-      '@zinkawaii/eslint-config':
-        specifier: 'catalog:'
-        version: 0.4.2(@vue/compiler-sfc@3.5.28)(eslint@10.0.1(jiti@2.6.1))(typescript@5.9.3)(vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(yaml@2.8.2))
-      '@zinkawaii/tsconfig':
-        specifier: 'catalog:'
-        version: 0.0.2
-      bumpp:
-        specifier: 'catalog:'
-        version: 10.4.1
-      eslint:
-        specifier: 'catalog:'
-        version: 10.0.1(jiti@2.6.1)
       pkg-types:
         specifier: 'catalog:'
         version: 2.3.0
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.20.3(@typescript/native-preview@7.0.0-dev.20260219.1)(oxc-resolver@11.18.0)(synckit@0.11.12)(typescript@5.9.3)
-      unrun:
-        specifier: 'catalog:'
-        version: 0.2.27(synckit@0.11.12)
-      vitest:
-        specifier: 'catalog:'
-        version: 4.0.18(@types/node@25.3.0)(jiti@2.6.1)(yaml@2.8.2)
 
   playground:
     dependencies:
@@ -1027,6 +1036,10 @@ packages:
 
   '@zinkawaii/eslint-config@0.4.2':
     resolution: {integrity: sha512-Q0PdaEhdQQzjH4sZITXni9So9M3FHoBb5CAUYTaOZjdyVfoL497bv2cvqmN9Gn3mN3DloQwJq4EXeuE0MZ5JTQ==}
+
+  '@zinkawaii/scripts@0.0.3':
+    resolution: {integrity: sha512-b291zg4rlf+sg/wNJ4KLSYtbLeznS12PdD6yzT0EJtfTU5kjrjxcg9WbAPYbwCFQ8nCBQb8pn9gNqnbcYDnQ7Q==}
+    hasBin: true
 
   '@zinkawaii/tsconfig@0.0.2':
     resolution: {integrity: sha512-SCK0SbJCikxJiMzg9sHjlw99yKMCUxYKzVBrHJmPnIqjRXqN5ieC9lWp9L7havbXbH4NniFL+wnNIvjYiEOhig==}
@@ -2392,6 +2405,11 @@ packages:
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
+  zx@8.8.5:
+    resolution: {integrity: sha512-SNgDF5L0gfN7FwVOdEFguY3orU5AkfFZm9B5YSHog/UDHv+lvmd82ZAsOenOkQixigwH2+yyH198AwNdKhj+RA==}
+    engines: {node: '>= 12.17.0'}
+    hasBin: true
+
 snapshots:
 
   '@antfu/eslint-config@7.4.3(@vue/compiler-sfc@3.5.28)(eslint@10.0.1(jiti@2.6.1))(typescript@5.9.3)(vitest@4.0.18(@types/node@25.3.0)(jiti@2.6.1)(yaml@2.8.2))':
@@ -3181,6 +3199,12 @@ snapshots:
       - svelte-eslint-parser
       - typescript
       - vitest
+
+  '@zinkawaii/scripts@0.0.3':
+    dependencies:
+      citty: 0.1.6
+      consola: 3.4.2
+      zx: 8.8.5
 
   '@zinkawaii/tsconfig@0.0.2': {}
 
@@ -4706,3 +4730,5 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zwitch@2.0.4: {}
+
+  zx@8.8.5: {}
