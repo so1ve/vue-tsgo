@@ -5,6 +5,9 @@ export default defineConfig({
         index: "./src/index.ts",
         cli: "./src/cli/index.ts",
     },
+    dts: {
+        tsgo: true,
+    },
     exports: {
         exclude: ["cli"],
     },
