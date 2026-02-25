@@ -6,7 +6,7 @@ import type CompilerDOM from "@vue/compiler-dom";
 import type { IRTemplate } from "./parse/ir";
 import type { CodeInformation } from "./types";
 
-export function runTsgoCommand(args: string[], options?: Partial<Options>) {
+export function runTsgo(args: string[], options?: Partial<Options>) {
     const resolver = ResolverFactory.default();
     const resolvedTsgo = resolver.sync(process.cwd(), "@typescript/native-preview/package.json");
 

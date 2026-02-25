@@ -8,14 +8,14 @@ import { dirname, extname, isAbsolute, join, relative } from "pathe";
 import picomatch from "picomatch";
 import { glob } from "tinyglobby";
 import { parse, type TSConfckParseResult } from "tsconfck";
-import { createMessageConnection, RequestType, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node.js";
+import { createMessageConnection, RequestType, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
 import type { VueCompilerOptions } from "@vue/language-core";
 import type { TSConfig } from "pkg-types";
 import type { DocumentDiagnosticParams, FullDocumentDiagnosticReport } from "vscode-languageserver-protocol";
 import packageJson from "../../package.json";
 import { createSourceFile, type SourceFile } from "./codegen";
 import { createCompilerOptionsBuilder } from "./compilerOptions";
-import { isVerificationEnabled, runTsgoCommand } from "./shared";
+import { isVerificationEnabled, runTsgo } from "./shared";
 
 export class Project {
     private configRoot: string;
@@ -260,7 +260,7 @@ export class Project {
     }
 
     async check(mode: "build" | "project") {
-        const { process: child } = runTsgoCommand(["--lsp", "-stdio"]);
+        const { process: child } = runTsgo(["--lsp", "-stdio"]);
         if (!child) {
             console.error("[Vue] Failed to start tsgo process.");
             process.exit(1);
