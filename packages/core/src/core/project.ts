@@ -8,10 +8,10 @@ import { dirname, extname, isAbsolute, join, relative } from "pathe";
 import picomatch from "picomatch";
 import { glob } from "tinyglobby";
 import { parse, type TSConfckParseResult } from "tsconfck";
-import { createMessageConnection, RequestType, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
+import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
+import { DiagnosticSeverity, type DocumentDiagnosticParams, type FullDocumentDiagnosticReport, RequestType } from "vscode-languageserver-protocol";
 import type { VueCompilerOptions } from "@vue/language-core";
 import type { TSConfig } from "pkg-types";
-import type { DocumentDiagnosticParams, FullDocumentDiagnosticReport } from "vscode-languageserver-protocol";
 import packageJson from "../../package.json";
 import { createSourceFile, type SourceFile } from "./codegen";
 import { createCompilerOptionsBuilder } from "./compilerOptions";
@@ -302,15 +302,11 @@ export class Project {
                     textDocument: {
                         uri: pathToFileURL(targetPath).href,
                     },
-                });
+                }).catch(() => void 0);
 
-                const diagnostics = report.items.filter((item) => !(
-                    item.code === 6385 ||
-                    item.code === 6133 && (
-                        project.parsed!.tsconfig.compilerOptions?.noUnusedLocals !== true &&
-                        project.parsed!.tsconfig.compilerOptions?.noUnusedParameters !== true
-                    )
-                ));
+                const diagnostics = report?.items.filter(
+                    (item) => item.severity === DiagnosticSeverity.Error,
+                ) ?? [];
 
                 if (sourceFile.type === "virtual") {
                     if (
