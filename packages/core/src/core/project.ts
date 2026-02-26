@@ -8,10 +8,10 @@ import { dirname, extname, isAbsolute, join, relative } from "pathe";
 import picomatch from "picomatch";
 import { glob } from "tinyglobby";
 import { parse, type TSConfckParseResult } from "tsconfck";
-import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
-import { DiagnosticSeverity, type DocumentDiagnosticParams, type FullDocumentDiagnosticReport, RequestType } from "vscode-languageserver-protocol";
+import { createMessageConnection, RequestType, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
 import type { VueCompilerOptions } from "@vue/language-core";
 import type { TSConfig } from "pkg-types";
+import type { DiagnosticSeverity, DocumentDiagnosticParams, FullDocumentDiagnosticReport } from "vscode-languageserver-protocol";
 import packageJson from "../../package.json";
 import { createSourceFile, type SourceFile } from "./codegen";
 import { createCompilerOptionsBuilder } from "./compilerOptions";
@@ -305,7 +305,7 @@ export class Project {
                 }).catch(() => void 0);
 
                 const diagnostics = report?.items.filter(
-                    (item) => item.severity === DiagnosticSeverity.Error,
+                    (item) => item.severity === 1 satisfies typeof DiagnosticSeverity.Error,
                 ) ?? [];
 
                 if (sourceFile.type === "virtual") {
