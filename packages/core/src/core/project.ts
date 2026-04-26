@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url";
 import { styleText } from "node:util";
 import * as pkg from "empathic/package";
-import { getExtendsChain, type TsconfigJson, type TsconfigJsonResolved, type TsconfigResult } from "get-tsconfig";
+import { getExtendsChain, resolveExtendsChain, type TsconfigJson, type TsconfigJsonResolved, type TsconfigResult } from "get-tsconfig";
 import { ResolverFactory } from "oxc-resolver";
 import { dirname, extname, isAbsolute, join, relative } from "pathe";
 import picomatch from "picomatch";
@@ -62,7 +62,7 @@ export class Project {
 
     async initialize() {
         this.extends = getExtendsChain(this.configPath);
-        this.parsed = this.extends[0].config;
+        this.parsed = resolveExtendsChain(this.extends).config;
         this.references = await Promise.all(
             this.parsed.references
                 // its type indicates that `reference.path` is a normalized path, but it is not
