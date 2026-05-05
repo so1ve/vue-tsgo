@@ -87,6 +87,7 @@ export class Project {
 
         const extensions = new Set([
             ...[".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".mts", ".cjs", ".cts"],
+            ...[".d.ts", ".d.mts", ".d.cts"],
             ...this.vueCompilerOptions.extensions,
             ...this.vueCompilerOptions.vitePressExtensions,
         ]);
