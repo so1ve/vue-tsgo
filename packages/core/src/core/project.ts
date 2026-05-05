@@ -1,13 +1,11 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { glob, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { styleText } from "node:util";
 import * as pkg from "empathic/package";
 import { getExtendsChain, resolveExtendsChain, type TsconfigJson, type TsconfigJsonResolved, type TsconfigResult } from "get-tsconfig";
 import { ResolverFactory } from "oxc-resolver";
 import { dirname, extname, isAbsolute, join, relative } from "pathe";
-import picomatch from "picomatch";
-import { glob } from "tinyglobby";
 import { createMessageConnection, RequestType, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
 import type { VueCompilerOptions } from "@vue/language-core";
 import type { DiagnosticSeverity, DocumentDiagnosticParams, FullDocumentDiagnosticReport } from "vscode-languageserver-protocol";
@@ -415,48 +413,46 @@ export class Project {
 async function resolveFiles(config: TsconfigJson, configPath: string, extensions: Set<string>) {
     const configRoot = dirname(configPath);
 
-    const includes = await Promise.all(
-        config.include?.map(async (pattern) => {
-            pattern = await transformPattern(pattern);
-            if (!pattern.includes("*")) {
-                return join(configRoot, pattern);
-            }
-
-            return glob(pattern, {
-                absolute: true,
-                cwd: configRoot,
-                ignore: "**/node_modules/**",
-            });
-        }) ?? [],
+    const includes: string[] = [];
+    const excludes = await Promise.all(
+        config.exclude?.map(transformPattern) ?? [],
     );
 
-    const excludes = await Promise.all(
-        config.exclude?.map(async (pattern) => picomatch(
-            join(configRoot, await transformPattern(pattern)),
-        )) ?? [],
+    await Promise.all(
+        config.include?.map(async (pattern) => {
+            pattern = await transformPattern(pattern);
+
+            for await (const dirent of glob(pattern, {
+                cwd: configRoot,
+                withFileTypes: true,
+                exclude: ["**/node_modules/**", ...excludes],
+            })) {
+                if (dirent.isFile()) {
+                    includes.push(join(dirent.parentPath, dirent.name));
+                }
+            }
+        }) ?? [],
     );
 
     return new Set(
         includes.flat().filter((path) => (
             path !== configPath &&
-            extensions.has(extname(path)) &&
-            excludes.every((match) => !match(path))
+            extensions.has(extname(path))
         )),
     );
 
     async function transformPattern(pattern: string) {
-        if (pattern.includes("*")) {
-            return pattern;
-        }
-        try {
-            const path = join(configRoot, pattern);
-            const stats = await stat(path);
-            if (stats.isFile()) {
-                return pattern;
+        if (!pattern.includes("*")) {
+            try {
+                const path = join(configRoot, pattern);
+                const stats = await stat(path);
+                if (stats.isDirectory()) {
+                    pattern = join(pattern, "**/*");
+                }
             }
+            catch {}
         }
-        catch {}
-        return join(pattern, "**/*");
+        return isAbsolute(pattern) ? relative(configRoot, pattern) : pattern;
     }
 }
 

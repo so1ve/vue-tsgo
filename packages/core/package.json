@@ -46,7 +46,6 @@
     "pathe": "catalog:",
     "picomatch": "catalog:",
     "tinyexec": "catalog:",
-    "tinyglobby": "catalog:",
     "vscode-jsonrpc": "catalog:"
   },
   "devDependencies": {
