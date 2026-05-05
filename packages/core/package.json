@@ -44,7 +44,6 @@
     "oxc-resolver": "catalog:",
     "oxc-walker": "catalog:",
     "pathe": "catalog:",
-    "tinyexec": "catalog:",
     "vscode-jsonrpc": "catalog:"
   },
   "devDependencies": {

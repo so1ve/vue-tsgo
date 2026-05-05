@@ -265,15 +265,11 @@ export class Project {
     }
 
     async check(mode: "build" | "project") {
-        const { process: child } = runTsgo(["--lsp", "-stdio"]);
-        if (!child) {
-            console.error("[Vue] Failed to start tsgo process.");
-            process.exit(1);
-        }
+        const child = runTsgo("--lsp", "-stdio");
 
         const connection = createMessageConnection(
-            new StreamMessageReader(child.stdout!),
-            new StreamMessageWriter(child.stdin!),
+            new StreamMessageReader(child.stdout),
+            new StreamMessageWriter(child.stdin),
         );
         connection.listen();
 

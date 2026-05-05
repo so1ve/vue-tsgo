@@ -1,14 +1,14 @@
+import { spawn } from "node:child_process";
 import { hyphenate } from "@vue/shared";
 import { ResolverFactory } from "oxc-resolver";
 import { join } from "pathe";
-import { exec, type Options } from "tinyexec";
 import type CompilerDOM from "@vue/compiler-dom";
 import type { Mapping } from "@vue/language-core";
 import type { Segment } from "muggle-string";
 import type { IRTemplate } from "./parse/ir";
 import type { CodeInformation } from "./types";
 
-export function runTsgo(args: string[], options?: Partial<Options>) {
+export function runTsgo(...args: string[]) {
     const resolver = ResolverFactory.default();
     const resolvedTsgo = resolver.sync(process.cwd(), "@typescript/native-preview/package.json");
 
@@ -18,7 +18,7 @@ export function runTsgo(args: string[], options?: Partial<Options>) {
     }
     const tsgo = join(resolvedTsgo.path, "../bin/tsgo.js");
 
-    return exec(process.execPath, [tsgo, ...args], options);
+    return spawn(process.execPath, [tsgo, ...args]);
 }
 
 export { hyphenate as hyphenateTag };
